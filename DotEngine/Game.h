@@ -1,8 +1,10 @@
 #pragma once
-#include "vector"
+#include <vector>
+#include "Bitmap.h"
+#include "Dot.h"
 
-static const int SCREEN_WIDTH = 1000;
-static const int SCREEN_HEIGHT = 800;
+static const int SCREEN_WIDTH = 1600;
+static const int SCREEN_HEIGHT = 1600;
 
 class DotRenderer;
 
@@ -14,5 +16,7 @@ public:
 	void CleanUp();
 private:
 	DotRenderer* renderer;
+	std::vector<Dot*> OnScreenDots;
+	//Bitmap* dotBitmap;
 };
 

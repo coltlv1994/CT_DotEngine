@@ -6,7 +6,7 @@
 
 const float DotVelocity = 50.0f;
 
-Dot::Dot(glm::vec2 aPosition, float aRadius)
+Dot::Dot(glm::vec2 aPosition, float aRadius, int p_dotIndex)
 {
 	position = aPosition;
 	startPos = aPosition;
@@ -21,6 +21,8 @@ Dot::Dot(glm::vec2 aPosition, float aRadius)
 	velocity = glm::vec2(cos(angle), sin(angle));
 
 	health = 3;
+
+	dotIndex = p_dotIndex;
 }
 
 void Dot::Render(DotRenderer* aRenderer, float dt)
@@ -73,6 +75,23 @@ void Dot::Render(DotRenderer* aRenderer, float dt)
 void Dot::TakeDamage(int someDamage)
 {
 	health -= someDamage;
+}
+
+void Dot::ResetDot(glm::vec2 aPosition, float aRadius)
+{
+	position = aPosition;
+	startPos = aPosition;
+	Radius = aRadius;
+
+	static std::mt19937 rng(static_cast<unsigned int>(time(nullptr)));
+	std::uniform_real_distribution<float> dist(-100.0f, 100.0f);
+
+	velocity = glm::vec2(dist(rng), dist(rng));
+
+	float angle = dist(rng) * glm::pi<float>() / 100.0f;
+	velocity = glm::vec2(cos(angle), sin(angle));
+
+	health = 3;
 }
 
 
