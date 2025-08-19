@@ -107,5 +107,8 @@ Quadtree::Quadtree(float X_MAX, float Y_MAX)
 
 void Quadtree::Populate(const std::vector<Dot*>& p_dots)
 {
-
+	for (auto dot : p_dots)
+	{
+		m_rootNode->Insert(dot);
+	}
 }
