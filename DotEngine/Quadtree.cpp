@@ -1,7 +1,8 @@
+#include <iostream>
 #include "Quadtree.h"
 #include "glm/glm.hpp"
 
-Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_parent = nullptr)
+Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_parent)
 {
 	m_layer = p_layer;
 	bound_X_DownRight = X_DR;
@@ -225,6 +226,94 @@ void Node::_addDataToChild(std::vector<Dot*>& p_childData)
 	}
 }
 
+void Node::_checkValid(std::unordered_set<Dot*> &p_invalidDots)
+{
+	if (m_layer != MAX_LAYER)
+	{
+		// let the children check first
+		for (auto _child : m_children)
+		{
+			if (_child != nullptr)
+			{
+				_child->_checkValid(p_invalidDots);
+			}
+		}
+
+		// check itself's data
+		std::vector<int> removeIndices;
+		size_t noOfDots = m_data.size();
+
+		for (int i = 0; i < noOfDots; i++)
+		{
+			Dot* dot_p = m_data[i];
+			// check if dot is on the middle that X_HALF and Y_HALF will penetrate
+			float dotX = dot_p->position.x;
+			float dotY = dot_p->position.y;
+			float dotRadius = dot_p->Radius;
+			float X_HALF_MINUS_RADIUS = X_HALF - dotRadius;
+			float X_HALF_PLUS_RADIUS = X_HALF + dotRadius;
+			float Y_HALF_MINUS_RADIUS = Y_HALF - dotRadius;
+			float Y_HALF_PLUS_RADIUS = Y_HALF + dotRadius;
+
+			// boundary check
+			if ((dotX > X_HALF_MINUS_RADIUS && dotX < X_HALF_PLUS_RADIUS) || (dotY > Y_HALF_MINUS_RADIUS && dotY < Y_HALF_PLUS_RADIUS))
+			{
+				// it is within the middle; i.e. X_HALF or Y_HALF penetrates.
+				continue;
+			}
+			else
+			{
+				removeIndices.push_back(i);
+			}
+		}
+
+		for (auto it = removeIndices.rbegin(); it != removeIndices.rend(); ++it)
+		{
+			p_invalidDots.insert(m_data[*it]);
+			m_data.erase(m_data.begin() + *it);
+		}
+	}
+	else
+	{
+		// the last layer
+		std::vector<int> removeIndices;
+		size_t noOfDots = m_data.size();
+
+		for (int i = 0; i < noOfDots; i++)
+		{
+			float dotX = m_data[i]->position.x;
+			float dotY = m_data[i]->position.y;
+
+			if (dotX > bound_X_DownRight || dotX < bound_X_UpLeft || dotY > bound_Y_DownRight || dotY < bound_Y_UpLeft)
+			{
+				// out of bound
+				removeIndices.push_back(i);
+			}
+		}
+
+		for (auto it = removeIndices.rbegin(); it != removeIndices.rend(); ++it)
+		{
+			p_invalidDots.insert(m_data[*it]);
+			m_data.erase(m_data.begin() + *it);
+		}
+	}
+}
+
+void Node::_reinsert(Dot* p_dotToInsert)
+{
+	// check boundary
+	float dotX = p_dotToInsert->position.x;
+	float dotY = p_dotToInsert->position.y;
+
+	if (dotX > bound_X_DownRight || dotX < bound_X_UpLeft || dotY > bound_Y_DownRight || dotY < bound_Y_UpLeft)
+	{
+		if (m_parent != nullptr)
+		{
+			return m_parent->_reinsert(p_dotToInsert);
+		}
+	}
+}
+
 Quadtree::Quadtree(float X_MAX, float Y_MAX, const std::vector<Dot*> *p_dots)
 {
 	m_rootNode = new Node(1, 0, X_MAX, 0, X_MAX); // should be (1, 0, screen_X_max, 0, screen_Y_max)
@@ -254,5 +343,17 @@ void Quadtree::CheckCollision(std::unordered_set<int>& p_collidedDotIndex)
 	for (auto node_p : nodesToCheck)
 	{
 		node_p->_checkCollision(nodesToCheck, p_collidedDotIndex);
+	}
+}
+
+void Quadtree::CheckValid()
+{
+	std::unordered_set<Dot*> invalidDots;
+	m_rootNode->_checkValid(invalidDots);
+	
+	// invalid dots need to be re-inserted
+	for (auto dot_p : invalidDots)
+	{
+		m_rootNode->Insert(dot_p);
 	}
 }

@@ -29,6 +29,8 @@ public:
 	void _checkCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_collidedDotIndex);
 	void _populateNodeList(std::vector<Node*>& p_nodeList);
 	void _addDataToChild(std::vector<Dot*>& p_childData);
+	void _checkValid(std::unordered_set<Dot*>& p_invalidDots);
+	void _reinsert(Dot* p_dotToInsert); // this should check if the dot fits boundary
 
 private:
 	int m_layer; // starts from 1 (top-est)
@@ -47,6 +49,7 @@ public:
 	~Quadtree();
 	void Populate();
 	void CheckCollision(std::unordered_set<int>& p_collidedDotIndex);
+	void CheckValid();
 
 private:
 	Node* m_rootNode = nullptr;
