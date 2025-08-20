@@ -160,16 +160,17 @@ void Node::_populateNodeList(std::vector<Node*>& p_nodeList)
 
 void Node::_checkCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_collidedDotIndex)
 {
+	std::vector<Dot*> dotsWithParents = m_data;
 	if (m_parent != nullptr)
 	{
-		// add parent's data
-		m_parent->_addDataToChild(m_data);
+		// comobine parent's data
+		m_parent->_addDataToChild(dotsWithParents);
 	}
 
-	size_t dataSize = m_data.size();
+	size_t dataSize = dotsWithParents.size();
 	for (int i = 0; i < dataSize; i++)
 	{
-		Dot* d1 = m_data[i];
+		Dot* d1 = dotsWithParents[i];
 		if (p_collidedDotIndex.contains(d1->dotIndex))
 		{
 			// no need to further check this dot
@@ -178,7 +179,7 @@ void Node::_checkCollision(std::vector<Node*>& p_nodeList, std::unordered_set<in
 
 		for (int j = i + 1; j < dataSize; j++)
 		{
-			Dot* d2 = m_data[j];
+			Dot* d2 = dotsWithParents[j];
 
 			if (d1 != d2)
 			{
@@ -314,6 +315,52 @@ void Node::_reinsert(Dot* p_dotToInsert)
 	}
 }
 
+void Node::_remove(Dot* p_dotToRemove)
+{
+	if (m_layer == MAX_LAYER)
+	{
+		m_data.erase(std::remove(m_data.begin(), m_data.end(), p_dotToRemove), m_data.end());
+	}
+	else
+	{
+		// it may have child but lets remove from itself first
+		auto it = std::find(m_data.begin(), m_data.end(), p_dotToRemove);
+		if (it != m_data.end())
+		{
+			m_data.erase(it);
+		}
+		else
+		{
+			// ask the child
+			float dotX = p_dotToRemove->position.x;
+			float dotY = p_dotToRemove->position.y;
+
+			if (dotX > X_HALF)
+			{
+				if (dotY > Y_HALF)
+				{
+					m_children[Direction::DownRight]->_remove(p_dotToRemove);
+				}
+				else
+				{
+					m_children[Direction::UpRight]->_remove(p_dotToRemove);
+				}
+			}
+			else
+			{
+				if (dotY > Y_HALF)
+				{
+					m_children[Direction::DownLeft]->_remove(p_dotToRemove);
+				}
+				else
+				{
+					m_children[Direction::UpLeft]->_remove(p_dotToRemove);
+				}
+			}
+		}
+	}
+}
+
 Quadtree::Quadtree(float X_MAX, float Y_MAX, const std::vector<Dot*> *p_dots)
 {
 	m_rootNode = new Node(1, 0, X_MAX, 0, X_MAX); // should be (1, 0, screen_X_max, 0, screen_Y_max)
@@ -346,8 +393,9 @@ void Quadtree::CheckCollision(std::unordered_set<int>& p_collidedDotIndex)
 	}
 }
 
-void Quadtree::CheckValid()
+void Quadtree::CheckAndMoveInvalid()
 {
+	// Invalid means the dot is not in correct child node or boundary
 	std::unordered_set<Dot*> invalidDots;
 	m_rootNode->_checkValid(invalidDots);
 	
@@ -356,4 +404,14 @@ void Quadtree::CheckValid()
 	{
 		m_rootNode->Insert(dot_p);
 	}
+}
+
+void Quadtree::Insert(Dot* p_dotToInsert)
+{
+	m_rootNode->Insert(p_dotToInsert);
+}
+
+void Quadtree::Remove(Dot* p_dotToRemove)
+{
+	m_rootNode->_remove(p_dotToRemove);
 }
