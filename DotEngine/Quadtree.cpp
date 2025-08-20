@@ -1,7 +1,7 @@
 #include "Quadtree.h"
 #include "glm/glm.hpp"
 
-Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_parent = nullptr)
+Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_parent)
 {
 	m_layer = p_layer;
 	bound_X_DownRight = X_DR;

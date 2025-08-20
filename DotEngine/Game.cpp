@@ -10,7 +10,7 @@
 std::vector<Dot*> dots;
 std::unordered_set<int> dotsToReset;
 
-const int DotAmount = 1000;
+const int DotAmount = 10000;
 
 Game::Game(DotRenderer* aRenderer)
 {
