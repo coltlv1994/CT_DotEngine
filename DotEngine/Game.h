@@ -19,7 +19,7 @@ public:
 private:
 	DotRenderer* renderer;
 	std::vector<Dot*> m_onScreenDots;
-	Quadtree* m_qt = nullptr;
-	//Bitmap* dotBitmap;
+	unsigned int m_noOfThreads = 8; //default will use 8 logical cores
+	Quadtree* m_qt;
 };
 

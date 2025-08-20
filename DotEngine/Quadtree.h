@@ -26,7 +26,7 @@ public:
 	void BoundaryInsert(Dot* p_dotToInsert); // this dot is on boundary of children, insert it to this node
 
 	// collsion detection related
-	void _checkCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_collidedDotIndex);
+	void _checkCollision(std::unordered_set<int>& p_collidedDotIndex);
 	void _populateNodeList(std::vector<Node*>& p_nodeList);
 	void _addDataToChild(std::vector<Dot*>& p_childData);
 	void _checkValid(std::unordered_set<Dot*>& p_invalidDots);
@@ -34,7 +34,7 @@ public:
 	void _remove(Dot* p_dotToRemove);
 
 private:
-	int m_layer; // starts from 1 (top-est)
+	int m_layer;
 	bool m_hadChild = false;
 	Node* m_parent = nullptr;
 	Node* m_children[MAX_CHILDREN];
@@ -46,7 +46,7 @@ private:
 class Quadtree
 {
 public:
-	Quadtree(float X_MAX, float Y_MAX, const std::vector<Dot*> *p_dots);
+	Quadtree(float X_MAX, float Y_MAX, const std::vector<Dot*> *p_dots, unsigned int p_noOfThreads);
 	~Quadtree();
 	void Populate();
 	void CheckCollision(std::unordered_set<int>& p_collidedDotIndex);
@@ -57,5 +57,7 @@ public:
 private:
 	Node* m_rootNode = nullptr;
 	const std::vector<Dot*> *m_dots = nullptr;
+	unsigned int m_noOfThreads;
 };
 
+void _threadSubtaskCheckCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_resultList);
