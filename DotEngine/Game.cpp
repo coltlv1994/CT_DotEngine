@@ -5,12 +5,13 @@
 #include "glm/glm.hpp"
 #include <unordered_set>
 #include "Quadtree.h"
+#include <thread>
 
 
 std::vector<Dot*> dots;
 std::unordered_set<int> dotsToReset;
 
-const int DotAmount = 10000;
+const int DotAmount = 4000;
 
 Game::Game(DotRenderer* aRenderer)
 {
@@ -33,13 +34,21 @@ Game::Game(DotRenderer* aRenderer)
 	OnScreenDots[0]->overriden = true;
 	OnScreenDots[0]->Radius = 10;
 	//To debug collision
+
+	unsigned int noOfHardwareThread = std::thread::hardware_concurrency();
+
+	if (m_noOfThreads > noOfHardwareThread)
+	{
+		// reduce number of threads to hardware supported number
+		m_noOfThreads = noOfHardwareThread;
+	}
 }
 
 void Game::Update(float aDeltaTime)
 {
 	dotsToReset.clear();
 
-	Quadtree qt = Quadtree(SCREEN_WIDTH, SCREEN_HEIGHT, &OnScreenDots);
+	Quadtree qt = Quadtree(SCREEN_WIDTH, SCREEN_HEIGHT, &OnScreenDots, m_noOfThreads);
 	qt.Populate();
 	qt.CheckCollision(dotsToReset);
 

@@ -17,6 +17,6 @@ public:
 private:
 	DotRenderer* renderer;
 	std::vector<Dot*> OnScreenDots;
-	//Bitmap* dotBitmap;
+	unsigned int m_noOfThreads = 8; //default will use 8 logical cores
 };
 

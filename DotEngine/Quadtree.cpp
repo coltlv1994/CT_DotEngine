@@ -1,5 +1,6 @@
 #include "Quadtree.h"
 #include "glm/glm.hpp"
+#include <thread>
 
 Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_parent)
 {
@@ -157,7 +158,7 @@ void Node::_populateNodeList(std::vector<Node*>& p_nodeList)
 	}	
 }
 
-void Node::_checkCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_collidedDotIndex)
+void Node::_checkCollision(std::unordered_set<int>& p_collidedDotIndex)
 {
 	if (m_parent != nullptr)
 	{
@@ -225,10 +226,11 @@ void Node::_addDataToChild(std::vector<Dot*>& p_childData)
 	}
 }
 
-Quadtree::Quadtree(float X_MAX, float Y_MAX, const std::vector<Dot*> *p_dots)
+Quadtree::Quadtree(float X_MAX, float Y_MAX, const std::vector<Dot*> *p_dots, unsigned int p_noOfThreads)
 {
-	m_rootNode = new Node(1, 0, X_MAX, 0, X_MAX); // should be (1, 0, screen_X_max, 0, screen_Y_max)
+	m_rootNode = new Node(0, 0, X_MAX, 0, X_MAX); // should be (1, 0, screen_X_max, 0, screen_Y_max)
 	m_dots = p_dots;
+	m_noOfThreads = p_noOfThreads;
 }
 
 Quadtree::~Quadtree()
@@ -250,9 +252,50 @@ void Quadtree::CheckCollision(std::unordered_set<int>& p_collidedDotIndex)
 	std::vector<Node*> nodesToCheck;
 	m_rootNode->_populateNodeList(nodesToCheck);
 
-	// can be multithreaded later
+	// divide task for threads
+	std::vector<std::vector<Node*>> threadTaskPool;
+	std::vector<std::unordered_set<int>> threadResultPool;
+	std::vector<std::thread> threads;
+	int threadIndex = 0;
+
+	for (threadIndex = 0; threadIndex < m_noOfThreads; threadIndex++)
+	{
+		threadTaskPool.push_back(std::vector<Node*>());
+		threadResultPool.push_back(std::unordered_set<int>());
+	}
+
+	threadIndex = 0;
+
 	for (auto node_p : nodesToCheck)
 	{
-		node_p->_checkCollision(nodesToCheck, p_collidedDotIndex);
+		(threadTaskPool[threadIndex]).push_back(node_p);
+		threadIndex += 1;
+		threadIndex = threadIndex % m_noOfThreads;
+	}
+
+	for (threadIndex = 0; threadIndex < m_noOfThreads; threadIndex++)
+	{
+		threads.push_back(std::thread(_threadSubtaskCheckCollision, std::ref(threadTaskPool[threadIndex]), std::ref(threadResultPool[threadIndex])));
+	}
+
+	for (auto& thread : threads)
+	{
+		thread.join();
+	}
+
+	for (auto threadResult : threadResultPool)
+	{
+		for (auto dotIndex : threadResult)
+		{
+			p_collidedDotIndex.insert(dotIndex);
+		}
+	}
+}
+
+void _threadSubtaskCheckCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_resultList)
+{
+	for (auto node_p : p_nodeList)
+	{
+		node_p->_checkCollision(p_resultList);
 	}
 }
