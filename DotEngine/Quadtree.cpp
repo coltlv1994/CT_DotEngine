@@ -21,57 +21,60 @@ Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_
 	m_parent = p_parent;
 }
 
-void Node::Insert(Dot* p_dotToInsert)
+void Node::InsertDots(std::vector<Dot*>& p_dots)
 {
 	if (m_layer == MAX_LAYER)
 	{
 		// cannot split any further
-		m_data.push_back(p_dotToInsert);
-		return;
+		m_data.insert(m_data.end(), p_dots.begin(), p_dots.end());
 	}
 	else
 	{
-		// check if dot is on the middle that X_HALF and Y_HALF will penetrate
-		float dotX = p_dotToInsert->position.x;
-		float dotY = p_dotToInsert->position.y;
-		float dotRadius = p_dotToInsert->Radius;
-		float X_HALF_MINUS_RADIUS = X_HALF - dotRadius;
-		float X_HALF_PLUS_RADIUS = X_HALF + dotRadius;
-		float Y_HALF_MINUS_RADIUS = Y_HALF - dotRadius;
-		float Y_HALF_PLUS_RADIUS = Y_HALF + dotRadius;
+		// this could be splitted further
+		std::array<std::vector<Dot*>, MAX_CHILDREN> dividedDots; // default initialized
 
-		// boundary check
-		if ((dotX > X_HALF_MINUS_RADIUS && dotX < X_HALF_PLUS_RADIUS) || (dotY > Y_HALF_MINUS_RADIUS && dotY < Y_HALF_PLUS_RADIUS))
+		_fillQuadrantList(p_dots, dividedDots);
+
+		for (int i = 0; i < MAX_CHILDREN; i++)
 		{
-			m_data.push_back(p_dotToInsert);
-			return;
+			if (dividedDots[i].size() != 0)
+			{
+				// this quad needs to be filled
+				if (m_children[i] == nullptr)
+				{
+					// not splitted
+					m_children[i] = Split(i);
+				}
+
+				m_children[i]->InsertDots(dividedDots[i]);
+			}
 		}
-
-		// can split
-		Direction quad = DetermineQuadrant(p_dotToInsert);
-
-		if (m_children[quad] == nullptr)
-		{
-			// not splitted
-			m_children[quad] = Split(quad);
-		}
-
-		m_children[quad]->Insert(p_dotToInsert);
 	}
 }
 
-bool Node::IsDotWithinBoundary(Dot* p_dot)
+Direction Node::_checkQuadrant(float posX, float posY)
 {
-	float dotX = p_dot->position.x;
-	float dotY = p_dot->position.y;
-
-	if (dotX > bound_X_UpLeft && dotX < bound_X_DownRight && dotY > bound_Y_UpLeft && dotY < bound_Y_DownRight)
+	if (posX > X_HALF)
 	{
-		return true;
+		if (posY > Y_HALF)
+		{
+			return Direction::DownRight;
+		}
+		else
+		{
+			return Direction::UpRight;
+		}
 	}
 	else
 	{
-		return false;
+		if (posY > Y_HALF)
+		{
+			return Direction::DownLeft;
+		}
+		else
+		{
+			return Direction::UpLeft;
+		}
 	}
 }
 
@@ -104,9 +107,9 @@ Direction Node::DetermineQuadrant(Dot* p_dot)
 	}
 }
 
-Node* Node::Split(Direction p_quad)
+Node* Node::Split(int quad)
 {
-	switch (p_quad)
+	switch (quad)
 	{
 	case Direction::DownLeft:
 		return new Node(m_layer + 1, bound_X_UpLeft, X_HALF, Y_HALF, bound_Y_DownRight, this);
@@ -119,12 +122,6 @@ Node* Node::Split(Direction p_quad)
 	default:
 		return nullptr;
 	}
-}
-
-void Node::BoundaryInsert(Dot* p_dotToInsert)
-{
-	// this dot is on boundary of children, insert it to this node
-	m_data.push_back(p_dotToInsert);
 }
 
 Node::~Node()
@@ -155,17 +152,11 @@ void Node::_populateNodeList(std::vector<Node*>& p_nodeList)
 		{
 			m_children[i]->_populateNodeList(p_nodeList);
 		}
-	}	
+	}
 }
 
 void Node::_checkCollision(std::unordered_set<int>& p_collidedDotIndex)
 {
-	if (m_parent != nullptr)
-	{
-		// add parent's data
-		m_parent->_addDataToChild(m_data);
-	}
-
 	size_t dataSize = m_data.size();
 	for (int i = 0; i < dataSize; i++)
 	{
@@ -226,7 +217,64 @@ void Node::_addDataToChild(std::vector<Dot*>& p_childData)
 	}
 }
 
-Quadtree::Quadtree(float X_MAX, float Y_MAX, const std::vector<Dot*> *p_dots, unsigned int p_noOfThreads)
+void Node::_fillQuadrantList(std::vector<Dot*>& p_dots, std::array<std::vector<Dot*>, 4>& dividedDots)
+{
+	for (auto dot_p : p_dots)
+	{
+		// check if dot is on the middle that X_HALF and Y_HALF will penetrate
+		float dotX = dot_p->position.x;
+		float dotY = dot_p->position.y;
+		float dotRadius = dot_p->Radius;
+
+		float dotXUpLeft = dotX - dotRadius;
+		float dotYUpLeft = dotY - dotRadius;
+		float dotXDownRight = dotX + dotRadius;
+		float dotYDownRight = dotY + dotRadius;
+
+		Direction upleftQuadrant = _checkQuadrant(dotXUpLeft, dotYUpLeft);
+		Direction downrightQuadrant = _checkQuadrant(dotXDownRight, dotYDownRight);
+
+		int action = m_insertQuadrant[downrightQuadrant][upleftQuadrant];
+
+		switch (action)
+		{
+			// very ugly but action is actually bitmap
+		case 15:
+			dividedDots[Direction::DownLeft].push_back(dot_p);
+			dividedDots[Direction::DownRight].push_back(dot_p);
+		case 3:
+			dividedDots[Direction::UpLeft].push_back(dot_p);
+		case 1:
+			dividedDots[Direction::UpRight].push_back(dot_p);
+			break;
+
+		case 10:
+			dividedDots[Direction::DownLeft].push_back(dot_p);
+		case 2:
+			dividedDots[Direction::UpLeft].push_back(dot_p);
+			break;
+
+		case 12:
+			dividedDots[Direction::DownLeft].push_back(dot_p);
+		case 4:
+			dividedDots[Direction::DownRight].push_back(dot_p);
+			break;
+
+		case 5:
+			dividedDots[Direction::UpRight].push_back(dot_p);
+			dividedDots[Direction::DownRight].push_back(dot_p);
+			break;
+
+		case 8:
+			dividedDots[Direction::DownRight].push_back(dot_p);
+			break;
+
+		default: continue;
+		}
+	}
+}
+
+Quadtree::Quadtree(float X_MAX, float Y_MAX, std::vector<Dot*>* p_dots, unsigned int p_noOfThreads)
 {
 	m_rootNode = new Node(0, 0, X_MAX, 0, X_MAX); // should be (1, 0, screen_X_max, 0, screen_Y_max)
 	m_dots = p_dots;
@@ -241,10 +289,7 @@ Quadtree::~Quadtree()
 
 void Quadtree::Populate()
 {
-	for (auto dot : *m_dots)
-	{
-		m_rootNode->Insert(dot);
-	}
+	m_rootNode->InsertDots(*m_dots);
 }
 
 void Quadtree::CheckCollision(std::unordered_set<int>& p_collidedDotIndex)
@@ -256,6 +301,7 @@ void Quadtree::CheckCollision(std::unordered_set<int>& p_collidedDotIndex)
 	std::vector<std::vector<Node*>> threadTaskPool;
 	std::vector<std::unordered_set<int>> threadResultPool;
 	std::vector<std::thread> threads;
+
 	int threadIndex = 0;
 
 	for (threadIndex = 0; threadIndex < m_noOfThreads; threadIndex++)

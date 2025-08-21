@@ -2,15 +2,16 @@
 #include "Dot.h"
 #include <unordered_set>
 #include <vector>
+#include <array>
 
 constexpr int MAX_CHILDREN = 4;
-constexpr int MAX_LAYER = 3; // root node is layer 1
+constexpr int MAX_LAYER = 4; // root node is layer 1
 
 enum Direction : int {
-	UpRight,
-	UpLeft,
-	DownRight,
-	DownLeft
+	UpRight, // 0
+	UpLeft, // 1
+	DownRight, // 2
+	DownLeft //3
 };
 
 class Node
@@ -19,16 +20,16 @@ public:
 	Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_parent = nullptr);
 	~Node();
 
-	void Insert(Dot* p_dotToInsert);
-	bool IsDotWithinBoundary(Dot* p_dot);
+	void InsertDots(std::vector<Dot*>& p_dots);
 	Direction DetermineQuadrant(Dot* p_dot);
-	Node* Split(Direction p_quad);
-	void BoundaryInsert(Dot* p_dotToInsert); // this dot is on boundary of children, insert it to this node
+	Node* Split(int p_quad);
 
 	// collsion detection related
 	void _checkCollision(std::unordered_set<int>& p_collidedDotIndex);
 	void _populateNodeList(std::vector<Node*>& p_nodeList);
 	void _addDataToChild(std::vector<Dot*>& p_childData);
+	Direction _checkQuadrant(float posX, float posY);
+	void _fillQuadrantList(std::vector<Dot*>& p_dots, std::array<std::vector<Dot*>, 4>& dividedDots);
 
 private:
 	int m_layer;
@@ -38,19 +39,25 @@ private:
 	std::vector<Dot*> m_data; // stores dots that sits on boundary, or this node cannot be splitted further
 	float bound_X_UpLeft, bound_X_DownRight, bound_Y_UpLeft, bound_Y_DownRight;
 	float X_HALF, Y_HALF; // for convenience of further calculation
+
+	// m[downright][upleft]
+	const int m_insertQuadrant[4][4] = { {0x01, 0x03, 0x10, 0x10},
+										 {0x10, 0x02, 0x10, 0x10},
+										 {0x05, 0x0F, 0x04, 0x0C},
+										 {0x10, 0x0A, 0x10, 0x08}};
 };
 
 class Quadtree
 {
 public:
-	Quadtree(float X_MAX, float Y_MAX, const std::vector<Dot*> *p_dots, unsigned int p_noOfThreads);
+	Quadtree(float X_MAX, float Y_MAX, std::vector<Dot*> *p_dots, unsigned int p_noOfThreads);
 	~Quadtree();
 	void Populate();
 	void CheckCollision(std::unordered_set<int>& p_collidedDotIndex);
 
 private:
 	Node* m_rootNode = nullptr;
-	const std::vector<Dot*> *m_dots = nullptr;
+	std::vector<Dot*> *m_dots = nullptr;
 	unsigned int m_noOfThreads;
 };
 

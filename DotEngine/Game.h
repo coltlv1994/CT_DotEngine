@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <unordered_set>
 #include "Bitmap.h"
 #include "Dot.h"
 
@@ -18,5 +19,6 @@ private:
 	DotRenderer* renderer;
 	std::vector<Dot*> OnScreenDots;
 	unsigned int m_noOfThreads = 8; //default will use 8 logical cores
+	std::unordered_set<int> dotsToReset;
 };
 
