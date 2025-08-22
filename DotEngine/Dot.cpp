@@ -27,53 +27,6 @@ Dot::Dot(glm::vec2 aPosition, int aRadius, int p_dotIndex)
 	dotIndex = p_dotIndex;
 }
 
-void Dot::Render(DotRenderer* aRenderer, float dt)
-{
-	totalTime += dt;
-
-	position += velocity * DotVelocity * dt;
-
-	if (!overriden)
-	{
-
-		float redColor = (glm::cos((totalTime + startPos.x) * 0.1f) * 0.5f + 0.5f) * 255.0f;
-
-		float greenColor = (glm::cos((totalTime + startPos.y) * 0.9f) * 0.5f + 0.5f) * 255.0f;
-
-		float blueColor = (glm::cos(totalTime * 0.4f) * 0.5f + 0.5f) * 255.0f;
-
-		aRenderer->SetDrawColor(redColor, greenColor, blueColor, 255);
-	}
-	else
-	{
-		aRenderer->SetDrawColor(255, 255, 255, 255);
-	}
-
-	aRenderer->DrawFilledCircle(position.x, position.y, Radius);
-
-	if (position.x - Radius < 0.0f)
-	{
-		position.x = Radius;
-		velocity.x *= -1;
-	}
-	else if (position.x + Radius > SCREEN_WIDTH)
-	{
-		position.x = SCREEN_WIDTH - Radius;
-		velocity.x *= -1;
-	}
-
-	if (position.y - Radius < 0.0f)
-	{
-		position.y = Radius;
-		velocity.y *= -1;
-	}
-	else if (position.y + Radius > SCREEN_HEIGHT)
-	{
-		position.y = SCREEN_HEIGHT - Radius;
-		velocity.y *= -1;
-	}
-}
-
 void Dot::RenderPixelBuffer(float p_deltaTime, uint32_t* p_pixelBuffer)
 {
 	totalTime += p_deltaTime;
@@ -91,39 +44,46 @@ void Dot::RenderPixelBuffer(float p_deltaTime, uint32_t* p_pixelBuffer)
 	int posX = (int)(position.x + 0.5f);
 	int posY = (int)(position.y + 0.5f);
 
-	for (int y = -Radius; y <= Radius; y++)
+	for (int y = 0; y <= Radius; y++)
 	{
-		int lineY = posY + y;
+		int lineYTop = posY - y;
+		int lineYBottom = posY + y;
 
-		if (lineY < 0 || lineY > SCREEN_HEIGHT - 1)
+		if (lineYTop > SCREEN_HEIGHT - 1 || lineYBottom < 0)
 		{
-			// out of boundary
+			// out-of-screen dot
 			continue;
 		}
 
 		int x = static_cast<int>(std::sqrt(Radius * Radius - y * y));
 
 		int startX = posX - x;
+		int endX = posX + x;
+
+		if (startX > SCREEN_WIDTH - 1 || endX < 0)
+		{
+			continue;
+		}
+
 		if (startX < 0)
 		{
 			startX = 0;
 		}
-		if (startX > SCREEN_WIDTH - 1)
-		{
-			continue;
-		}
 
-		int endX = posX + x;
 		if (endX > SCREEN_WIDTH - 1)
 		{
 			endX = SCREEN_WIDTH - 1;
 		}
-		if (endX < 0)
+
+		if (lineYBottom < SCREEN_HEIGHT)
 		{
-			continue;
+			std::fill(&(p_pixelBuffer[lineYBottom * SCREEN_WIDTH + startX]), &(p_pixelBuffer[lineYBottom * SCREEN_WIDTH + endX + 1]), color);
 		}
 
-		std::fill(&(p_pixelBuffer[lineY * SCREEN_WIDTH + startX]), &(p_pixelBuffer[lineY * SCREEN_WIDTH + endX + 1]), color);
+		if (lineYTop >= 0)
+		{
+			std::fill(&(p_pixelBuffer[lineYTop * SCREEN_WIDTH + startX]), &(p_pixelBuffer[lineYTop * SCREEN_WIDTH + endX + 1]), color);
+		}
 	}
 
 	if (position.x - Radius < 0.0f)

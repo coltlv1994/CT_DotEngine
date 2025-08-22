@@ -38,7 +38,6 @@ Game::Game(DotRenderer* aRenderer, int p_dotAmount)
 	}
 
 	//To debug collision
-	OnScreenDots[0]->overriden = true;
 	OnScreenDots[0]->Radius = 10;
 	//To debug collision
 
@@ -51,27 +50,12 @@ Game::Game(DotRenderer* aRenderer, int p_dotAmount)
 	}
 
 	m_dotsPerRenderThread = (m_dotAmount + m_noOfThreads - 1) / m_noOfThreads;
-
-	for (int i = 0; i < m_noOfThreads - 1; i++)
-	{
-		m_dotRenderTask.push_back(std::vector<Dot*>());
-
-		m_dotRenderTask[i].insert(
-			m_dotRenderTask[i].end(),
-			OnScreenDots.begin() + i * m_dotsPerRenderThread,
-			OnScreenDots.begin() + (i + 1) * m_dotsPerRenderThread);
-	}
-
-	m_dotRenderTask.push_back(std::vector<Dot*>());
-	m_dotRenderTask.back().insert(
-		m_dotRenderTask.back().end(),
-		OnScreenDots.begin() + (m_noOfThreads - 1) * m_dotsPerRenderThread,
-		OnScreenDots.end());
 }
 
 void Game::Update(float aDeltaTime)
 {
-	dotsToReset.clear();
+	std::unordered_set<int> dotsToReset;
+
 	memset(m_pixelBuffer, 0, m_pixelBufferSizeInByte);
 	m_pixelBufferRenderThreads.clear();
 
@@ -84,17 +68,31 @@ void Game::Update(float aDeltaTime)
 		int diry = std::rand() % 2;
 		int dirx = std::rand() % 2;
 
-		dirx = -1 ? dirx > 1 : dirx;
-		diry = -1 ? diry > 1 : diry;
+		dirx = 1 ? dirx > 1 : dirx;
+		diry = 1 ? diry > 1 : diry;
 
 		OnScreenDots[dotIndex]->ResetDot({ std::rand() % SCREEN_WIDTH, std::rand() % SCREEN_HEIGHT }, 3);
 	}
 
-	for (int i = 0; i < m_noOfThreads; i++)
+	for (int i = 0; i < m_noOfThreads - 1; i++)
 	{
 		// render here
-		m_pixelBufferRenderThreads.push_back(std::thread(&Game::RenderPartition, this, std::ref(m_dotRenderTask[i]), aDeltaTime));
+		m_pixelBufferRenderThreads.push_back(
+			std::thread(
+				&Game::RenderPartition,
+				this,
+				aDeltaTime,
+				i * m_dotsPerRenderThread,
+				(i + 1) * m_dotsPerRenderThread));
 	}
+
+	m_pixelBufferRenderThreads.push_back(
+		std::thread(
+			&Game::RenderPartition,
+			this,
+			aDeltaTime,
+			(m_noOfThreads - 1) * m_dotsPerRenderThread,
+			OnScreenDots.size()));
 
 	for (auto& thd : m_pixelBufferRenderThreads)
 	{
@@ -105,11 +103,11 @@ void Game::Update(float aDeltaTime)
 	SDL_RenderTexture(renderer->GetSDLRenderer(), m_screenTexture, NULL, NULL);
 }
 
-void Game::RenderPartition(std::vector<Dot*>& p_dots, float p_deltaTime)
+void Game::RenderPartition(float p_deltaTime, const int start, const int end)
 {
-	for (auto dot_p : p_dots)
+	for (int i = start; i < end; i++)
 	{
-		dot_p->RenderPixelBuffer(p_deltaTime, m_pixelBuffer);
+		OnScreenDots[i]->RenderPixelBuffer(p_deltaTime, m_pixelBuffer);
 	}
 }
 

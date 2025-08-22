@@ -8,7 +8,7 @@ static const int insertQuadrant[4][4] = { {0x01, 0x03, 0x10, 0x10},
 									 {0x05, 0x0F, 0x04, 0x0C},
 									 {0x10, 0x0A, 0x10, 0x08} };
 
-Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_parent)
+Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR)
 {
 	m_layer = p_layer;
 	bound_X_DownRight = X_DR;
@@ -23,8 +23,6 @@ Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_
 	{
 		m_children[i] = nullptr;
 	}
-
-	m_parent = p_parent;
 }
 
 void Node::InsertDots(std::vector<Dot*>& p_dots)
@@ -89,13 +87,13 @@ Node* Node::Split(int quad)
 	switch (quad)
 	{
 	case Direction::DownLeft:
-		return new Node(m_layer + 1, bound_X_UpLeft, X_HALF, Y_HALF, bound_Y_DownRight, this);
+		return new Node(m_layer + 1, bound_X_UpLeft, X_HALF, Y_HALF, bound_Y_DownRight);
 	case Direction::DownRight:
-		return new Node(m_layer + 1, X_HALF, bound_X_DownRight, Y_HALF, bound_Y_DownRight, this);
+		return new Node(m_layer + 1, X_HALF, bound_X_DownRight, Y_HALF, bound_Y_DownRight);
 	case Direction::UpLeft:
-		return new Node(m_layer + 1, bound_X_UpLeft, X_HALF, bound_Y_UpLeft, Y_HALF, this);
+		return new Node(m_layer + 1, bound_X_UpLeft, X_HALF, bound_Y_UpLeft, Y_HALF);
 	case Direction::UpRight:
-		return new Node(m_layer + 1, X_HALF, bound_X_DownRight, bound_Y_UpLeft, Y_HALF, this);
+		return new Node(m_layer + 1, X_HALF, bound_X_DownRight, bound_Y_UpLeft, Y_HALF);
 	default:
 		return nullptr;
 	}
@@ -183,14 +181,6 @@ void Node::_checkCollision(std::unordered_set<int>& p_collidedDotIndex)
 				}
 			}
 		}
-	}
-}
-
-void Node::_addDataToChild(std::vector<Dot*>& p_childData)
-{
-	for (auto dot : m_data)
-	{
-		p_childData.push_back(dot);
 	}
 }
 

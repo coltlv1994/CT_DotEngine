@@ -11,7 +11,6 @@ class Dot
 public:
 
 	Dot(glm::vec2 aPosition, int aRadius, int p_dotIndex);
-	void Render(DotRenderer* aRenderer, float dt);
 	void TakeDamage(int someDamage);
 	void ResetDot(glm::vec2 aPosition, int aRadius);
 	void RenderPixelBuffer(float p_deltaTime, uint32_t* p_pixelBuffer);
@@ -27,7 +26,5 @@ public:
 	int health;
 
 	int dotIndex;
-
-	bool overriden = false;
 };
 

@@ -18,17 +18,15 @@ public:
 	~Game();
 	void Update(float aDeltaTime);
 	void CleanUp();
-	void RenderPartition(std::vector<Dot*> &p_dots, float p_deltaTime);
+	void RenderPartition(float p_deltaTime, const int start, const int end);
 private:
 	DotRenderer* renderer;
 	std::vector<Dot*> OnScreenDots;
 	unsigned int m_noOfThreads = 8; //default will use 8 logical cores
-	std::unordered_set<int> dotsToReset;
 	SDL_Texture* m_screenTexture;
 	uint32_t* m_pixelBuffer;
 	size_t m_pixelBufferSizeInByte;
 	int m_dotsPerRenderThread;
-	std::vector<std::vector<Dot*>> m_dotRenderTask;
 	std::vector<std::thread> m_pixelBufferRenderThreads;
 	int m_dotAmount;
 };
