@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 
+extern const int SCREEN_WIDTH;
+extern const int SCREEN_HEIGHT;
+
 class DotRenderer
 {
 public:

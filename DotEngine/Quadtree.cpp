@@ -2,6 +2,12 @@
 #include "glm/glm.hpp"
 #include <thread>
 
+// m[downright][upleft]
+static const int insertQuadrant[4][4] = { {0x01, 0x03, 0x10, 0x10},
+									 {0x10, 0x02, 0x10, 0x10},
+									 {0x05, 0x0F, 0x04, 0x0C},
+									 {0x10, 0x0A, 0x10, 0x08} };
+
 Node::Node(int p_layer, float X_UL, float X_DR, float Y_UL, float Y_DR, Node* p_parent)
 {
 	m_layer = p_layer;
@@ -78,35 +84,6 @@ Direction Node::_checkQuadrant(float posX, float posY)
 	}
 }
 
-Direction Node::DetermineQuadrant(Dot* p_dot)
-{
-	float dotX = p_dot->position.x;
-	float dotY = p_dot->position.y;
-
-	if (dotX < X_HALF)
-	{
-		if (dotY < Y_HALF)
-		{
-			return Direction::UpLeft;
-		}
-		else
-		{
-			return Direction::DownLeft;
-		}
-	}
-	else
-	{
-		if (dotY < Y_HALF)
-		{
-			return Direction::UpRight;
-		}
-		else
-		{
-			return Direction::DownRight;
-		}
-	}
-}
-
 Node* Node::Split(int quad)
 {
 	switch (quad)
@@ -126,7 +103,7 @@ Node* Node::Split(int quad)
 
 Node::~Node()
 {
-	for (int i = 0; i < MAX_CHILDREN; i++)
+	for (int i = 0; i != MAX_CHILDREN; i++)
 	{
 		if (m_children[i] != nullptr)
 		{
@@ -234,7 +211,7 @@ void Node::_fillQuadrantList(std::vector<Dot*>& p_dots, std::array<std::vector<D
 		Direction upleftQuadrant = _checkQuadrant(dotXUpLeft, dotYUpLeft);
 		Direction downrightQuadrant = _checkQuadrant(dotXDownRight, dotYDownRight);
 
-		int action = m_insertQuadrant[downrightQuadrant][upleftQuadrant];
+		int action = insertQuadrant[downrightQuadrant][upleftQuadrant];
 
 		switch (action)
 		{
@@ -262,9 +239,6 @@ void Node::_fillQuadrantList(std::vector<Dot*>& p_dots, std::array<std::vector<D
 
 		case 5:
 			dividedDots[Direction::UpRight].push_back(dot_p);
-			dividedDots[Direction::DownRight].push_back(dot_p);
-			break;
-
 		case 8:
 			dividedDots[Direction::DownRight].push_back(dot_p);
 			break;
@@ -276,7 +250,7 @@ void Node::_fillQuadrantList(std::vector<Dot*>& p_dots, std::array<std::vector<D
 
 Quadtree::Quadtree(float X_MAX, float Y_MAX, std::vector<Dot*>* p_dots, unsigned int p_noOfThreads)
 {
-	m_rootNode = new Node(0, 0, X_MAX, 0, X_MAX); // should be (1, 0, screen_X_max, 0, screen_Y_max)
+	m_rootNode = new Node(0, 0, X_MAX, 0, X_MAX); // should be (0, 0, screen_X_max, 0, screen_Y_max)
 	m_dots = p_dots;
 	m_noOfThreads = p_noOfThreads;
 }
@@ -321,7 +295,7 @@ void Quadtree::CheckCollision(std::unordered_set<int>& p_collidedDotIndex)
 
 	for (threadIndex = 0; threadIndex < m_noOfThreads; threadIndex++)
 	{
-		threads.push_back(std::thread(_threadSubtaskCheckCollision, std::ref(threadTaskPool[threadIndex]), std::ref(threadResultPool[threadIndex])));
+		threads.push_back(std::thread(&Quadtree::_threadSubtaskCheckCollision, this, std::ref(threadTaskPool[threadIndex]), std::ref(threadResultPool[threadIndex])));
 	}
 
 	for (auto& thread : threads)
@@ -338,7 +312,7 @@ void Quadtree::CheckCollision(std::unordered_set<int>& p_collidedDotIndex)
 	}
 }
 
-void _threadSubtaskCheckCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_resultList)
+void Quadtree::_threadSubtaskCheckCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_resultList)
 {
 	for (auto node_p : p_nodeList)
 	{

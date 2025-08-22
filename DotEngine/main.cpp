@@ -1,9 +1,13 @@
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <cstdio>
+#include <cstdlib>
 #include <string>
 #include "Game.h"
 #include "DotRenderer.h"
 
+const int SCREEN_WIDTH = 1600;
+const int SCREEN_HEIGHT = 1600;
 
 int main(int argc, char* args[])
 {
@@ -18,7 +22,18 @@ int main(int argc, char* args[])
 		return 1;
 	}
 
-	SDL_Window* window = SDL_CreateWindow("Game", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+	int dotAmount = 1000; //default value
+
+	if (argc > 1)
+	{
+		// use command line parameter for number of dots
+		dotAmount = atoi(args[1]);
+	}
+
+	char title[100];
+	sprintf_s(title, "Game with %d dot(s)", dotAmount);
+
+	SDL_Window* window = SDL_CreateWindow(title, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
 
 	DotRenderer* renderer = new DotRenderer(window);
 	if (!renderer->GetSDLRenderer())
@@ -41,7 +56,7 @@ int main(int argc, char* args[])
 
 	renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
 
-	Game* game = new Game(renderer);
+	Game* game = new Game(renderer, dotAmount);
 
 	bool quit = false;
 	SDL_Event e;

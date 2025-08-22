@@ -4,8 +4,11 @@
 #include <vector>
 #include <array>
 
+extern const int SCREEN_WIDTH;
+extern const int SCREEN_HEIGHT;
+
 constexpr int MAX_CHILDREN = 4;
-constexpr int MAX_LAYER = 4; // root node is layer 1
+constexpr int MAX_LAYER = 4; // root node is layer 0
 
 enum Direction : int {
 	UpRight, // 0
@@ -21,7 +24,6 @@ public:
 	~Node();
 
 	void InsertDots(std::vector<Dot*>& p_dots);
-	Direction DetermineQuadrant(Dot* p_dot);
 	Node* Split(int p_quad);
 
 	// collsion detection related
@@ -39,12 +41,6 @@ private:
 	std::vector<Dot*> m_data; // stores dots that sits on boundary, or this node cannot be splitted further
 	float bound_X_UpLeft, bound_X_DownRight, bound_Y_UpLeft, bound_Y_DownRight;
 	float X_HALF, Y_HALF; // for convenience of further calculation
-
-	// m[downright][upleft]
-	const int m_insertQuadrant[4][4] = { {0x01, 0x03, 0x10, 0x10},
-										 {0x10, 0x02, 0x10, 0x10},
-										 {0x05, 0x0F, 0x04, 0x0C},
-										 {0x10, 0x0A, 0x10, 0x08}};
 };
 
 class Quadtree
@@ -54,11 +50,10 @@ public:
 	~Quadtree();
 	void Populate();
 	void CheckCollision(std::unordered_set<int>& p_collidedDotIndex);
+	void _threadSubtaskCheckCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_resultList);
 
 private:
 	Node* m_rootNode = nullptr;
 	std::vector<Dot*> *m_dots = nullptr;
 	unsigned int m_noOfThreads;
 };
-
-void _threadSubtaskCheckCollision(std::vector<Node*>& p_nodeList, std::unordered_set<int>& p_resultList);
